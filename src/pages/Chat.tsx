@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Smile, Settings } from 'lucide-react';
+import { Send, Smile } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import axios from 'axios';
 
 interface Message {
   id: string;
@@ -18,7 +19,6 @@ const Chat: React.FC = () => {
   useEffect(() => {
     connectToChat();
     return () => {
-      // Cleanup function to close the connection when component unmounts
       setIsConnected(false);
     };
   }, []);
@@ -65,9 +65,31 @@ const Chat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const sendToChatbot = async (message: string) => {
+    try {
+      const response = await axios.post('http://localhost:5000/chat', { message: message });
+      const content = response.data.content;
+      return {
+        id: Date.now().toString(),
+        sender: 'ChatBot',
+        content: content,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("Error communicating with chatbot:", error);
+      return {
+        id: Date.now().toString(),
+        sender: 'ChatBot',
+        content: 'Sorry, there was an error with the chatbot service.',
+        timestamp: new Date(),
+      };
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
-    if (inputMessage.trim() && isConnected) {
+    console.log('handleSendMessage triggered');  // Debug line
+    if (inputMessage.trim() && isConnected) { // Ensure isConnected is true
       const newMessage: Message = {
         id: Date.now().toString(),
         sender: 'You',
@@ -76,17 +98,8 @@ const Chat: React.FC = () => {
       };
       setMessages(prevMessages => [...prevMessages, newMessage]);
       setInputMessage('');
-      // Here you would typically send the message to the server
-      // For now, we'll just simulate receiving a response
-      setTimeout(() => {
-        const responseMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ChatBot',
-          content: 'This is a simulated response. In a real app, this would come from the server.',
-          timestamp: new Date(),
-        };
-        setMessages(prevMessages => [...prevMessages, responseMessage]);
-      }, 1000);
+      const chatbotResponse = await sendToChatbot(inputMessage);
+      setMessages(prevMessages => [...prevMessages, chatbotResponse]);
     }
   };
 
@@ -109,6 +122,12 @@ const Chat: React.FC = () => {
           type="text"
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSendMessage(e);  // Trigger handleSendMessage on Enter
+            }
+          }}
           placeholder="Type a message..."
           className="flex-1 border rounded-l-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
