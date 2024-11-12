@@ -34,17 +34,10 @@ const Chat: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        onopen(res) {
-          if (res.ok && res.status === 200) {
-            console.log("Connection opened");
-            setIsConnected(true);
-          } else if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-            console.error("Client-side error:", res.statusText);
-          }
-        },
         onmessage(event) {
           const newMessage = JSON.parse(event.data);
           setMessages(prevMessages => [...prevMessages, newMessage]);
+          setIsConnected(true);
         },
         onclose() {
           console.log("Connection closed by the server");
