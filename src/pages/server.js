@@ -1,17 +1,17 @@
-// server.js
+
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Enable cross-origin requests from the frontend
+const cors = require('cors'); 
 
 const app = express();
-app.use(cors());  // Allow requests from your frontend
-app.use(express.json()); // To parse JSON requests
+app.use(cors());  
+app.use(express.json()); 
 
 const apiKey = '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';
 
-// Endpoint to handle chat requests
+
 app.post('/chat', async (req, res) => {
-  const { message } = req.body;  // User's message from frontend
+  const { message } = req.body;  
 
   try {
     const response = await axios.post(
@@ -26,12 +26,12 @@ app.post('/chat', async (req, res) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`, // Securely use API key
+          Authorization: `Bearer ${apiKey}`, 
         },
       }
     );
 
-    // Send response back to the frontend
+    
     const content = response.data.choices[0].message.content;
     res.json({ content });
   } catch (error) {

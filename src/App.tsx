@@ -2,11 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import Home from './pages/Home';
-import Chat from './pages/Chat';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import Profile from './pages/Profile';
+import Home from './pages/Home.tsx';
+import Login from './pages/Login.tsx';
+import Chat from './pages/Chat.tsx';
+import SignUp from './pages/SignUp.tsx';
+import Profile from './pages/Profile.tsx';
 
 function App() {
   return (

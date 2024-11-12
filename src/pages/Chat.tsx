@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Smile, Settings } from 'lucide-react';
+import { Send, Smile } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import axios from 'axios';
 
 interface Message {
   id: string;
@@ -18,7 +19,6 @@ const Chat: React.FC = () => {
   useEffect(() => {
     connectToChat();
     return () => {
-      // Cleanup function to close the connection when component unmounts
       setIsConnected(false);
     };
   }, []);
@@ -65,7 +65,33 @@ const Chat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Updated sendToChatbot function with relative path and '/api' prefix
+  const sendToChatbot = async (message: string) => {
+    try {
+      const response = await axios.post(
+        '/api/chat', // Use relative path with '/api' prefix for Vite proxy
+        { message: message }
+      );
+      
+      const content = response.data.content;
+      return {
+        id: Date.now().toString(),
+        sender: 'ChatBot',
+        content: content,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("Error communicating with chatbot:", error);
+      return {
+        id: Date.now().toString(),
+        sender: 'ChatBot',
+        content: 'Sorry, there was an error with the chatbot service.',
+        timestamp: new Date(),
+      };
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputMessage.trim() && isConnected) {
       const newMessage: Message = {
@@ -76,17 +102,10 @@ const Chat: React.FC = () => {
       };
       setMessages(prevMessages => [...prevMessages, newMessage]);
       setInputMessage('');
-      // Here you would typically send the message to the server
-      // For now, we'll just simulate receiving a response
-      setTimeout(() => {
-        const responseMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ChatBot',
-          content: 'This is a simulated response. In a real app, this would come from the server.',
-          timestamp: new Date(),
-        };
-        setMessages(prevMessages => [...prevMessages, responseMessage]);
-      }, 1000);
+
+      // Get chatbot response and update the messages list
+      const chatbotResponse = await sendToChatbot(inputMessage);
+      setMessages(prevMessages => [...prevMessages, chatbotResponse]);
     }
   };
 
