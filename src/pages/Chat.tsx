@@ -1,136 +1,80 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Smile } from 'lucide-react';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
-import axios from 'axios';
-
-interface Message {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: Date;
-}
+import React, { useState, useRef, useEffect } from 'react';
+import { Message } from '../types';
+import ChatHeader from './ChatHeader.tsx';
+import ChatMessage from './ChatMessage';
+import ChatInput from './ChatInput';
 
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
+  const [username] = useState('You');
+  const botName = "ChatBot";
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    connectToChat();
-    return () => {
-      setIsConnected(false);
-    };
-  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const connectToChat = async () => {
-    try {
-      await fetchEventSource('/api/chat', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        onmessage(event) {
-          const newMessage = JSON.parse(event.data);
-          setMessages(prevMessages => [...prevMessages, newMessage]);
-          setIsConnected(true);
-        },
-        onclose() {
-          console.log("Connection closed by the server");
-          setIsConnected(false);
-        },
-        onerror(err) {
-          console.error("There was an error from the server", err);
-          setIsConnected(false);
-        },
-      });
-    } catch (error) {
-      console.error("Failed to connect to chat:", error);
-      setIsConnected(false);
-    }
-  };
-
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const sendToChatbot = async (message: string) => {
+  const handleSendMessage = async (content: string) => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      sender: username,
+      content,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+
+    // Fetch the bot's response from the server
+    const botResponse = await fetchBotResponse(content);
+
+    const botMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      sender: botName,
+      content: botResponse,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, botMessage]);
+  };
+
+  const fetchBotResponse = async (userMessage: string): Promise<string> => {
     try {
-      const response = await axios.post('http://localhost:5000/chat', { message: message });
-      const content = response.data.content;
-      return {
-        id: Date.now().toString(),
-        sender: 'ChatBot',
-        content: content,
-        timestamp: new Date(),
-      };
+      const response = await fetch('http://localhost:5000/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
+      const data = await response.json();
+      return data.reply || "Sorry, I couldn't understand that.";
     } catch (error) {
-      console.error("Error communicating with chatbot:", error);
-      return {
-        id: Date.now().toString(),
-        sender: 'ChatBot',
-        content: 'Sorry, there was an error with the chatbot service.',
-        timestamp: new Date(),
-      };
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
-    e.preventDefault();
-    console.log('handleSendMessage triggered');  // Debug line
-    if (inputMessage.trim() && isConnected) { // Ensure isConnected is true
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        sender: 'You',
-        content: inputMessage,
-        timestamp: new Date(),
-      };
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-      setInputMessage('');
-      const chatbotResponse = await sendToChatbot(inputMessage);
-      setMessages(prevMessages => [...prevMessages, chatbotResponse]);
+      console.error('Error getting bot response:', error);
+      return "Sorry, something went wrong.";
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)] bg-white rounded-lg shadow-md">
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex flex-col h-[calc(100vh-200px)] bg-white/20 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden border border-white/20">
+      <ChatHeader messageCount={messages.length} />
+      
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        role="list"
+        aria-label="Chat messages"
+      >
         {messages.map((message) => (
-          <div key={message.id} className={`mb-4 ${message.sender === 'You' ? 'text-right' : 'text-left'}`}>
-            <div className={`inline-block p-2 rounded-lg ${message.sender === 'You' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
-              <p className="font-semibold">{message.sender}</p>
-              <p>{message.content}</p>
-              <p className="text-xs mt-1">{message.timestamp.toLocaleTimeString()}</p>
-            </div>
-          </div>
+          <ChatMessage
+            key={message.id}
+            message={message}
+            isOwnMessage={message.sender === username}
+          />
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSendMessage} className="flex items-center border-t p-4">
-        <input
-          type="text"
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleSendMessage(e);  // Trigger handleSendMessage on Enter
-            }
-          }}
-          placeholder="Type a message..."
-          className="flex-1 border rounded-l-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button type="button" className="bg-gray-100 p-2 rounded-full">
-          <Smile className="w-6 h-6 text-gray-500" />
-        </button>
-        <button type="submit" className="bg-blue-500 text-white p-2 rounded-full ml-2">
-          <Send className="w-6 h-6" />
-        </button>
-      </form>
+
+      <ChatInput onSendMessage={handleSendMessage} />
     </div>
   );
 };
