@@ -4,30 +4,10 @@ import ChatHeader from './ChatHeader.tsx';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 
-const DEMO_MESSAGES: Message[] = [
-  {
-    id: '1',
-    sender: 'Alice',
-    content: 'Hey everyone! How are you doing today? 👋',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15),
-  },
-  {
-    id: '2',
-    sender: 'Bob',
-    content: 'Hi Alice! Having a great day, thanks for asking! 😊',
-    timestamp: new Date(Date.now() - 1000 * 60 * 14),
-  },
-  {
-    id: '3',
-    sender: 'Charlie',
-    content: 'Just joined! Love the new chat interface! ✨',
-    timestamp: new Date(Date.now() - 1000 * 60 * 13),
-  },
-];
-
 const Chat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>(DEMO_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [username] = useState('You');
+  const botName = "ChatBot";
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,14 +18,41 @@ const Chat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
+  const handleSendMessage = async (content: string) => {
+    const userMessage: Message = {
       id: Date.now().toString(),
       sender: username,
       content,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, newMessage]);
+    
+    setMessages(prev => [...prev, userMessage]);
+
+    // Fetch the bot's response from the server
+    const botResponse = await fetchBotResponse(content);
+
+    const botMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      sender: botName,
+      content: botResponse,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, botMessage]);
+  };
+
+  const fetchBotResponse = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await fetch('http://localhost:5000/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
+      const data = await response.json();
+      return data.reply || "Sorry, I couldn't understand that.";
+    } catch (error) {
+      console.error('Error getting bot response:', error);
+      return "Sorry, something went wrong.";
+    }
   };
 
   return (

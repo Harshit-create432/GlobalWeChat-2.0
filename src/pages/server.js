@@ -1,45 +1,42 @@
 // server.js
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Enable cross-origin requests from the frontend
+const cors = require('cors');
 
 const app = express();
-app.use(cors());  // Allow requests from your frontend
-app.use(express.json()); // To parse JSON requests
+app.use(express.json());
+app.use(cors());
 
-const apiKey = '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';
+const GEMINI_API_KEY = process.env.AIzaSyC7sFV_lBC0kOyN1Nt2Do2as-WBA8lV9Ho;
 
-// Endpoint to handle chat requests
-app.post('/chat', async (req, res) => {
-  const { message } = req.body;  // User's message from frontend
+app.post('/api/chatbot', async (req, res) => {
+  const userMessage = req.body.message;
 
   try {
     const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
+      'https://generativelanguage.googleapis.com/v1beta/chat/completions',
       {
-        model: 'gpt-3.5-turbo',
+        model: 'gemini-1.5-flash', // specify the Gemini model you want to use
         messages: [
-          { role: 'system', content: 'You are a helpful chatbot.' },
-          { role: 'user', content: message },
+          { role: 'user', content: userMessage },
         ],
       },
       {
         headers: {
+          'Authorization': `Bearer ${AIzaSyC7sFV_lBC0kOyN1Nt2Do2as-WBA8lV9Ho}`,
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`, // Securely use API key
         },
       }
     );
 
-    // Send response back to the frontend
-    const content = response.data.choices[0].message.content;
-    res.json({ content });
+    // Send the chatbot's response back to the client
+    res.json({ reply: response.data.choices[0].message.content });
   } catch (error) {
-    console.error("Error communicating with chatbot:", error);
-    res.status(500).json({ error: 'Sorry, there was an error with the chatbot service.' });
+    console.error("Error contacting Gemini API:", error);
+    res.status(500).json({ error: 'Chatbot request failed' });
   }
 });
 
-app.listen(5000, () => {
-  console.log('Backend server running on http://localhost:5000');
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
